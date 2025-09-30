@@ -1,2 +1,655 @@
-# D-STAR2
-vote-website
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时投票系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .description {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .vote-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .vote-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .options-section, .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .option {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .option:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+            border-color: #3498db;
+        }
+        
+        .option.selected {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.05);
+        }
+        
+        .option-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .option-icon {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .vote-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .vote-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .vote-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result-item {
+            margin-bottom: 20px;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .result-title {
+            font-weight: 600;
+        }
+        
+        .result-percentage {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .progress-bar {
+            height: 25px;
+            background: #ecf0f1;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 1s ease-in-out;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .total-votes {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(52, 152, 219, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+            }
+        }
+        
+        .vote-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .vote-animation.show {
+            opacity: 1;
+        }
+        
+        .checkmark {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 4;
+            stroke: #2ecc71;
+            stroke-miterlimit: 10;
+            box-shadow: inset 0px 0px 0px #2ecc71;
+            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+        }
+        
+        .checkmark__circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 4;
+            stroke-miterlimit: 10;
+            stroke: #2ecc71;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+        }
+        
+        @keyframes stroke {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        @keyframes scale {
+            0%, 100% {
+                transform: none;
+            }
+            50% {
+                transform: scale3d(1.1, 1.1, 1);
+            }
+        }
+        
+        @keyframes fill {
+            100% {
+                box-shadow: inset 0px 0px 0px 60px #2ecc71;
+            }
+        }
+        
+        .qrcode-section {
+            text-align: center;
+            margin-top: 40px;
+            padding: 25px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .qrcode-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        #qrcode {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .qrcode-instruction {
+            margin-top: 15px;
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .deployment-info {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 40px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .deployment-info h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .deployment-method {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .deployment-method h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .success-message {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>实时投票系统</h1>
+            <p class="description">选择您喜欢的选项并投票，结果将实时更新。您也可以通过手机扫描二维码参与投票。</p>
+        </header>
+        
+        <div class="vote-container">
+            <section class="options-section">
+                <h2>投票选项</h2>
+                <div class="options-list">
+                    <div class="option" data-id="1">
+                        <div class="option-title">
+                            <span class="option-icon">🍕</span>
+                            <span>选项一：披萨</span>
+                        </div>
+                        <p>美味可口的意大利披萨，多种口味可选</p>
+                    </div>
+                    <div class="option" data-id="2">
+                        <div class="option-title">
+                            <span class="option-icon">🍔</span>
+                            <span>选项二：汉堡</span>
+                        </div>
+                        <p>经典美式汉堡，搭配新鲜蔬菜和酱料</p>
+                    </div>
+                    <div class="option" data-id="3">
+                        <div class="option-title">
+                            <span class="option-icon">🍣</span>
+                            <span>选项三：寿司</span>
+                        </div>
+                        <p>新鲜制作的日式寿司，多种海鲜选择</p>
+                    </div>
+                    <div class="option" data-id="4">
+                        <div class="option-title">
+                            <span class="option-icon">🥗</span>
+                            <span>选项四：沙拉</span>
+                        </div>
+                        <p>健康营养的沙拉，多种蔬菜和酱汁搭配</p>
+                    </div>
+                </div>
+                <button class="vote-btn" id="voteButton" disabled>投 票</button>
+            </section>
+            
+            <section class="results-section">
+                <h2>实时投票结果</h2>
+                <div class="results-list">
+                    <div class="result-item">
+                        <div class="result-header">
+                            <span class="result-title">选项一：披萨</span>
+                            <span class="result-percentage" data-id="1">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" data-id="1" style="width: 0%; background-color: #3498db;"></div>
+                            <div class="progress-text">0 票</div>
+                        </div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-header">
+                            <span class="result-title">选项二：汉堡</span>
+                            <span class="result-percentage" data-id="2">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" data-id="2" style="width: 0%; background-color: #e74c3c;"></div>
+                            <div class="progress-text">0 票</div>
+                        </div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-header">
+                            <span class="result-title">选项三：寿司</span>
+                            <span class="result-percentage" data-id="3">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" data-id="3" style="width: 0%; background-color: #2ecc71;"></div>
+                            <div class="progress-text">0 票</div>
+                        </div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-header">
+                            <span class="result-title">选项四：沙拉</span>
+                            <span class="result-percentage" data-id="4">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" data-id="4" style="width: 0%; background-color: #f39c12;"></div>
+                            <div class="progress-text">0 票</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="total-votes">
+                    总投票数：<span id="totalVotes">0</span> 票
+                </div>
+            </section>
+        </div>
+        
+        <section class="qrcode-section">
+            <h2>手机投票</h2>
+            <p>使用手机扫描下方二维码，即可在手机上参与投票</p>
+            <div class="qrcode-container">
+                <div id="qrcode"></div>
+                <p class="qrcode-instruction">使用手机相机或二维码扫描应用扫描此二维码</p>
+                <p class="qrcode-instruction" style="color: #e74c3c; font-weight: bold;">
+                    注意：二维码需要在服务器环境下才能正常工作！
+                </p>
+            </div>
+        </section>
+        
+        <section class="deployment-info">
+            <h2>GitHub Pages 部署指南</h2>
+            
+            <div class="success-message">
+                <p><strong>恭喜！</strong> 您的投票网站已成功部署到 GitHub Pages。</p>
+                <p>您的网站URL: <span id="site-url">https://yourusername.github.io/vote-website</span></p>
+            </div>
+            
+            <div class="deployment-method">
+                <h3>第一步：创建GitHub仓库</h3>
+                <p>1. 登录GitHub，点击右上角"+"号，选择"New repository"</p>
+                <p>2. 输入仓库名称，例如"vote-website"</p>
+                <p>3. 选择"Public"，勾选"Add a README file"</p>
+                <p>4. 点击"Create repository"</p>
+            </div>
+            
+            <div class="deployment-method">
+                <h3>第二步：上传HTML文件</h3>
+                <p>1. 在仓库页面，点击"Add file" → "Upload files"</p>
+                <p>2. 将HTML文件拖拽到上传区域</p>
+                <p>3. 填写提交信息，点击"Commit changes"</p>
+            </div>
+            
+            <div class="deployment-method">
+                <h3>第三步：启用GitHub Pages</h3>
+                <p>1. 点击"Settings"选项卡</p>
+                <p>2. 在左侧菜单中找到"Pages"</p>
+                <p>3. 在"Source"部分，选择"Deploy from a branch"</p>
+                <p>4. 选择"main"分支和"/ (root)"文件夹</p>
+                <p>5. 点击"Save"</p>
+                <p>6. 等待几分钟，您的网站URL将显示在页面上</p>
+            </div>
+            
+            <div class="deployment-method">
+                <h3>第四步：访问您的网站</h3>
+                <p>通过显示的URL访问您的投票网站，例如：</p>
+                <p><strong>https://您的用户名.github.io/仓库名</strong></p>
+            </div>
+        </section>
+        
+        <footer>
+            <p>© 2023 实时投票系统 | 数据每5秒自动更新</p>
+        </footer>
+    </div>
+    
+    <div class="vote-animation" id="voteAnimation">
+        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化投票数据
+            let votes = {
+                1: { name: "选项一：披萨", count: 12, color: "#3498db" },
+                2: { name: "选项二：汉堡", count: 18, color: "#e74c3c" },
+                3: { name: "选项三：寿司", count: 25, color: "#2ecc71" },
+                4: { name: "选项四：沙拉", count: 15, color: "#f39c12" }
+            };
+            
+            let selectedOption = null;
+            const options = document.querySelectorAll('.option');
+            const voteButton = document.getElementById('voteButton');
+            const totalVotesElement = document.getElementById('totalVotes');
+            const voteAnimation = document.getElementById('voteAnimation');
+            
+            // 选择选项
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    // 移除之前的选择
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    
+                    // 设置当前选择
+                    this.classList.add('selected');
+                    selectedOption = this.getAttribute('data-id');
+                    voteButton.disabled = false;
+                    voteButton.classList.add('pulse');
+                });
+            });
+            
+            // 投票功能
+            voteButton.addEventListener('click', function() {
+                if (selectedOption) {
+                    // 显示投票动画
+                    voteAnimation.classList.add('show');
+                    
+                    // 模拟投票过程
+                    setTimeout(() => {
+                        // 增加票数
+                        votes[selectedOption].count++;
+                        
+                        // 更新UI
+                        updateResults();
+                        
+                        // 隐藏动画
+                        voteAnimation.classList.remove('show');
+                        
+                        // 重置选择
+                        options.forEach(opt => opt.classList.remove('selected'));
+                        selectedOption = null;
+                        voteButton.disabled = true;
+                        voteButton.classList.remove('pulse');
+                    }, 2000);
+                }
+            });
+            
+            // 更新结果
+            function updateResults() {
+                let totalVotes = 0;
+                
+                // 计算总票数
+                for (let id in votes) {
+                    totalVotes += votes[id].count;
+                }
+                
+                // 更新每个选项的显示
+                for (let id in votes) {
+                    const percentage = totalVotes > 0 ? Math.round((votes[id].count / totalVotes) * 100) : 0;
+                    
+                    // 更新百分比
+                    document.querySelector(`.result-percentage[data-id="${id}"]`).textContent = `${percentage}%`;
+                    
+                    // 更新进度条
+                    const progressFill = document.querySelector(`.progress-fill[data-id="${id}"]`);
+                    const progressText = progressFill.nextElementSibling;
+                    
+                    progressFill.style.width = `${percentage}%`;
+                    progressFill.style.backgroundColor = votes[id].color;
+                    progressText.textContent = `${votes[id].count} 票`;
+                }
+                
+                // 更新总票数
+                totalVotesElement.textContent = totalVotes;
+            }
+            
+            // 模拟实时投票更新
+            function simulateVoting() {
+                // 随机选择一个选项增加票数
+                const optionIds = Object.keys(votes);
+                const randomId = optionIds[Math.floor(Math.random() * optionIds.length)];
+                votes[randomId].count++;
+                
+                // 更新UI
+                updateResults();
+            }
+            
+            // 生成二维码
+            function generateQRCode() {
+                const currentUrl = window.location.href;
+                const qrcodeElement = document.getElementById('qrcode');
+                
+                // 清除现有内容
+                qrcodeElement.innerHTML = '';
+                
+                // 创建canvas元素
+                const canvas = document.createElement('canvas');
+                qrcodeElement.appendChild(canvas);
+                
+                // 使用QRCode库生成二维码
+                QRCode.toCanvas(canvas, currentUrl, {
+                    width: 200,
+                    margin: 2,
+                    color: {
+                        dark: '#2c3e50',
+                        light: '#ffffff'
+                    }
+                }, function(error) {
+                    if (error) {
+                        console.error(error);
+                        qrcodeElement.innerHTML = '<p>二维码生成失败，请刷新页面重试</p>';
+                    }
+                });
+            }
+            
+            // 更新网站URL显示
+            function updateSiteUrl() {
+                const siteUrlElement = document.getElementById('site-url');
+                siteUrlElement.textContent = window.location.href;
+            }
+            
+            // 每5秒模拟一次投票
+            setInterval(simulateVoting, 5000);
+            
+            // 初始化显示和二维码
+            updateResults();
+            generateQRCode();
+            updateSiteUrl();
+        });
+    </script>
+</body>
+</html>
